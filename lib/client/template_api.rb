@@ -1,8 +1,14 @@
 module OVIRT
   class Client
     def templates(opts={})
-      search= opts[:search] || ("datacenter=%s" % current_datacenter.name)
-      http_get("/templates?search=%s" % CGI.escape(search)).xpath('/templates/template').collect do |t|
+      xml_response = nil
+      if filtered_api
+        xml_response = http_get("/templates")
+      else
+        search= opts[:search] || ("datacenter=%s" % current_datacenter.name)
+        xml_response = http_get("/templates?search=%s" % CGI.escape(search))
+      end
+      xml_response.xpath('/templates/template').collect do |t|
         OVIRT::Template::new(self, t)
       end.compact
     end

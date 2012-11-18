@@ -12,12 +12,18 @@ module OVIRT
 
     def clusters(opts={})
       headers = {:accept => "application/xml; detail=datacenters"}
-      search= opts[:search] || ("datacenter=%s" % current_datacenter.name)
-      http_get("/clusters?search=%s" % CGI.escape(search), headers).xpath('/clusters/cluster').collect do |cl|
-        cluster = OVIRT::Cluster.new(self, cl)
-        #the following line is needed as a work-around a bug in RHEV 3.0 rest-api
-        cluster if cluster.datacenter.id == current_datacenter.id
-      end.compact
+      if filtered_api
+        http_get("/clusters", headers).xpath('/clusters/cluster').collect do |cl|
+          cluster = OVIRT::Cluster.new(self,cl)
+        end.compact
+      else
+        search= opts[:search] || ("datacenter=%s" % current_datacenter.name)
+        http_get("/clusters?search=%s" % CGI.escape(search), headers).xpath('/clusters/cluster').collect do |cl|
+          cluster = OVIRT::Cluster.new(self, cl)
+          #the following line is needed as a work-around a bug in RHEV 3.0 rest-api
+          cluster if cluster.datacenter.id == current_datacenter.id
+        end.compact
+      end
     end
 
     def cluster(cluster_id)

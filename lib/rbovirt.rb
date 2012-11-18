@@ -35,13 +35,14 @@ module OVIRT
 
   class Client
 
-    attr_reader :credentials, :api_entrypoint, :datacenter_id, :cluster_id
+    attr_reader :credentials, :api_entrypoint, :datacenter_id, :cluster_id, :filtered_api
 
-    def initialize(username, password, api_entrypoint, datacenter_id=nil, cluster_id=nil)
+    def initialize(username, password, api_entrypoint, datacenter_id=nil, cluster_id=nil, filtered_api = false)
       @credentials = { :username => username, :password => password }
       @datacenter_id = datacenter_id
       @cluster_id = cluster_id
       @api_entrypoint = api_entrypoint
+      @filtered_api = filtered_api
     end
 
     def api_version
@@ -94,7 +95,7 @@ module OVIRT
 
     def http_delete(suburl)
       begin
-        headers = {:accept => 'application/xml'}.merge(auth_header)
+        headers = {:accept => 'application/xml'}.merge(auth_header).merge(filter_header)
         Nokogiri::XML(RestClient::Resource.new(@api_entrypoint)[suburl].delete(headers))
       rescue
         handle_fault $!
@@ -105,6 +106,14 @@ module OVIRT
       # This is the method for strict_encode64:
       encoded_credentials = ["#{@credentials[:username]}:#{@credentials[:password]}"].pack("m0").gsub(/\n/,'')
       { :authorization => "Basic " + encoded_credentials }
+    end
+
+    def filter_header
+      if filtered_api
+        { :filter => "true" }
+      else
+        {}
+      end
     end
 
     def base_url
@@ -124,8 +133,8 @@ module OVIRT
     def http_headers(headers ={})
       headers.merge({
         :content_type => 'application/xml',
-        :accept => 'application/xml'
-      }).merge(auth_header)
+        :accept => 'application/xml',
+      }).merge(auth_header).merge(filter_header)
     end
 
     def handle_fault(f)
